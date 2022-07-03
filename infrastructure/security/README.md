@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Café Management Application Security</h1>
-  <p>This application implements <strong>OAuth2</strong> mechanism for authentication and authorization.</p>
+  <p>This application uses <strong>OAuth2</strong> mechanism for auth operations.</p>
 </div>
 
 <hr />
