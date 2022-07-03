@@ -1,0 +1,76 @@
+version: '3.9'
+
+services:
+  storage:
+    image: openzipkin/zipkin-elasticsearch7
+    container_name: cafe-tracing_db
+    volumes:
+      - ./data/elasticsearch:/elasticsearch/data
+    networks:
+      - cafe_network_internal
+
+  # The zipkin process services the UI, and also exposes a POST endpoint that
+  # instrumentation can send trace data to. Scribe is disabled by default.
+  zipkin:
+    restart: unless-stopped
+    image: openzipkin/zipkin
+    container_name: cafe-tracing
+    # Environment settings are defined here https://github.com/openzipkin/zipkin/blob/master/zipkin-server/README.md#environment-variables
+    environment:
+      - STORAGE_TYPE=elasticsearch
+      - ES_HOSTS=storage:9200
+      # Uncomment to enable debug logging
+      # - JAVA_OPTS=-Dlogging.level.zipkin2=DEBUG
+    ports:
+      - 9411:9411
+    depends_on:
+      - storage 
+    networks:
+      - cafe_network_internal
+      - cafe_network
+
+  prometheus:
+    image: prom/prometheus
+    container_name: cafe-tracing_prometheus
+    ports:
+      - 9090:9090
+    depends_on:
+      - storage
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - cafe_network_internal
+      - cafe_network
+
+  grafana:
+    image: grafana/grafana
+    container_name: cafe-tracing_grafana
+    ports:
+      - 3000:3000
+    depends_on:
+      - prometheus
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    networks:
+      - cafe_network_internal
+      - cafe_network
+
+  setup_grafana_datasource:
+    image: appropriate/curl
+    container_name: setup_grafana_datasource
+    depends_on:
+      - grafana
+    volumes:
+      - ./prometheus/create-datasource-and-dashboard.sh:/create.sh:ro
+    command: /create.sh
+    networks:
+      - cafe_network_internal
+      - cafe_network
+
+networks:
+  cafe_network_internal:
+    driver: bridge
+    internal: true
+  cafe_network:
+    external: true
