@@ -1,0 +1,49 @@
+version: '3.9'
+
+services:
+  postgres:
+    restart: unless-stopped
+    image: postgres:12.1
+    hostname: postgres
+    container_name: cafe-authz-server_db
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: cafe_authz_db
+      POSTGRES_USER: cafe
+      POSTGRES_PASSWORD: cafe
+    networks:
+      - cafe_network_internal
+  keycloak:
+    restart: unless-stopped
+    image: jboss/keycloak:12.0.1
+    hostname: keycloak
+    container_name: cafe-authz-server
+    volumes:
+      - ./keycloak/config/keycloak-config.json:/tmp/keycloak-config.json
+    environment:
+      DB_VENDOR: POSTGRES
+      DB_ADDR: postgres
+      DB_DATABASE: cafe_authz_db
+      DB_USER: cafe
+      DB_SCHEMA: public
+      DB_PASSWORD: cafe
+      KEYCLOAK_USER: cafe
+      KEYCLOAK_PASSWORD: cafe
+      KEYCLOAK_LOGLEVEL: INFO
+      PROXY_ADDRESS_FORWARDING: 'true'
+    command: ${COMMAND_PARAMS}
+    ports:
+      - 9080:8080
+    depends_on:
+      - postgres
+    networks:
+      - cafe_network_internal
+      - cafe_network
+
+networks:
+  cafe_network_internal:
+    driver: bridge
+    internal: true
+  cafe_network:
+    external: true
